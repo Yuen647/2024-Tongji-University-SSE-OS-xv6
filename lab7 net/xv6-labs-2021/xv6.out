@@ -2,8 +2,8 @@
 
 xv6 kernel is booting
 
-hart 2 starting
 hart 1 starting
+hart 2 starting
 init: starting sh
 $ nettests
 nettests running on port 26099
@@ -14,4 +14,4 @@ testing DNS
 DNS arecord for pdos.csail.mit.edu. is 128.52.129.126
 DNS OK
 all tests passed.
-$ qemu-system-riscv64: terminating on signal 15 from pid 9005 (make)
+$ qemu-system-riscv64: terminating on signal 15 from pid 15754 (make)
