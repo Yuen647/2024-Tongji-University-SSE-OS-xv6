@@ -97,18 +97,21 @@ sys_uptime(void)
   return xticks;
 }
 
-uint64
-sys_trace(void)//从用户空间获取了参数，然后把它设为进程的trace_mask
-{
-  int n;
-  //获取追踪的mask
-  if(argint(0, &n) < 0)//把第一个参数存进n 它代表追踪的mask，值可以是0、1、2
-    return -1;
-  //将mask保存在本进程的proc中
-  struct proc *pro = myproc();
-  printf("trace pid: %d\n", pro->pid);
-  pro->trace_mask = n;
-  return 0;
+// 从用户空间获取参数，并将其设置为进程的trace_mask
+uint64 
+set_trace_mask(void) {
+  int traceMask;
+  // 获取追踪的mask
+  if (argint(0, &traceMask) < 0) {
+    return -1;  // 如果获取参数失败，返回-1
+  }
+  
+  // 将mask保存在当前进程的proc结构体中
+  struct proc *currentProc = myproc();
+  printf("trace pid: %d\n", currentProc->pid);
+  currentProc->trace_mask = traceMask;
+  
+  return 0;  // 成功设置后返回0
 }
 
 uint64

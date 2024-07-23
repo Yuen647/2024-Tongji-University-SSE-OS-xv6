@@ -1,6 +1,6 @@
 struct stat;
 struct rtcdate;
-struct sysinfo;//sysinfo会用到它作为返回值
+struct sysinfo;
 
 // system calls
 int fork(void);

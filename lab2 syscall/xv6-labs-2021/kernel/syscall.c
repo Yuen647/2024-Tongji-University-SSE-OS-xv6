@@ -143,26 +143,26 @@ static char *syscall_name[] = {
 void
 syscall(void)
 {
-  int num;
-  struct proc *p = myproc();//可以看作进程控制块
+  int syscall_id;
+  struct proc *current_process = myproc(); // 获取当前进程的进程控制块
 
-  //系统调用号储存在a7
-  num = p->trapframe->a7;
-  if(num > 0 && num < NELEM(syscalls) && syscalls[num]) 
+  // 系统调用号存放在寄存器a7中
+  syscall_id = current_process->trapframe->a7;
+  if(syscall_id > 0 && syscall_id < NELEM(syscalls) && syscalls[syscall_id]) 
   {
-    //返回值储存在a0
-    p->trapframe->a0 = syscalls[num]();
-    //用位操作判断mask是否覆盖了当前调用号
-    if(p->trace_mask&(1<<num))
+    // 返回值保存在寄存器a0中
+    current_process->trapframe->a0 = syscalls[syscall_id]();
+    // 检查trace_mask是否包含当前调用号
+    if(current_process->trace_mask & (1 << syscall_id))
     {
-      printf("%d: syscall %s -> %d\n", p->pid, syscall_name[num], p->trapframe->a0);
+      printf("%d: syscall %s -> %d\n", current_process->pid, syscall_name[syscall_id], current_process->trapframe->a0);
     }
   } 
   else 
   {
     printf("%d %s: unknown sys call %d\n",
-            p->pid, p->name, num);
-    p->trapframe->a0 = -1;
+            current_process->pid, current_process->name, syscall_id);
+    current_process->trapframe->a0 = -1;
   }
 }
                              

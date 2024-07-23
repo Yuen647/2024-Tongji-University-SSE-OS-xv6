@@ -81,23 +81,20 @@ kalloc(void)
   return (void*)r;
 }
 
-//观察kalloc.c可以得知空闲内存由链表 kmem.list 给出，每一个节点代表一页内存
-//每页内存大小由 宏定义PGSIZE 给出
 uint64
-get_free_mem(void)//获取空闲空间大小
+get_free_mem(void) // 获取空闲内存大小
 {
-  struct run *r;
-  acquire(&kmem.lock);//获取锁
-  r = kmem.freelist;//获得空闲空间链表的头结点
-  int num = 0;
-  while(r)
+  struct run *free_node;
+  acquire(&kmem.lock); // 获取锁
+  free_node = kmem.freelist; // 获取空闲链表的头结点
+  int free_pages = 0;
+  while(free_node)
   {
-    ++num;
-    r = r->next;
+    ++free_pages;
+    free_node = free_node->next;
   }
-  release(&kmem.lock);//释放锁
-  return num * PGSIZE;//计算空闲空间大小
-
+  release(&kmem.lock); // 释放锁
+  return free_pages * PGSIZE; // 计算并返回空闲内存大小
 }
 
 
