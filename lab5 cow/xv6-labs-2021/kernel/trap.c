@@ -101,11 +101,11 @@ usertrap(void)
     acquire_refcnt();
     uint ref = kgetref((void *)pa);
     if (ref == 1)
-    { // 引用次数为1，直接使用该页
+    { // 直接使用该页
       *pte = ((*pte) & (~PTE_COW)) | PTE_W;
     }
     else
-    { // 引用次数大于1，分配物理页
+    { //分配物理页
       char *mem = kalloc();
       if (mem == 0)
       {
@@ -114,7 +114,7 @@ usertrap(void)
         release_refcnt();
         goto end;
       }
-      // 将旧页面复制到新页面，并用PTE_W和(~PTE_COW)设置新页的PTE
+
       memmove(mem, (char *)pa, PGSIZE);
       uint flag = (PTE_FLAGS(*pte) | PTE_W) & (~PTE_COW);
       if (mappages(p->pagetable, va, PGSIZE, (uint64)mem, flag) != 0)
@@ -125,7 +125,7 @@ usertrap(void)
         release_refcnt();
         goto end;
       }
-      kfree((void *)pa); // 旧页引用次数减1
+      kfree((void *)pa); 
     }
     release_refcnt();
   }
@@ -133,20 +133,6 @@ usertrap(void)
   {
     // ok
   }
-  // else if (r_scause() == 13)
-  // {
-  //   if (uvmcheckcowpage(r_stval()))
-  //   {
-  //     if (uvmcowcopy(r_stval()) == -1)
-  //     { // 如果内存不足，则杀死进程
-  //       p->killed = 1;
-  //     }
-  //   }
-  //   else
-  //   {
-  //     p->killed = 1;
-  //   }
-  // }
   else
   {
     printf("usertrap(): unexpected scause %p pid=%d\n", r_scause(), p->pid);
