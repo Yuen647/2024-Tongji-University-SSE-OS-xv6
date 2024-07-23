@@ -444,75 +444,80 @@ copyinstr(pagetable_t pagetable, char *dst, uint64 srcva, uint64 max)
   //   return -1;
   // }
 }
-//递归打印
+// 递归打印页表
 void _vmprint(pagetable_t pagetable, int level)
-{//打印页表的内容，以及根据页表的层级缩进打印每个条目的层次结构信息
-  for (int i = 0; i < 512; i++)
-  {//循环遍历页表的条目
-    pte_t pte = pagetable[i];//将第 i 个条目赋值给变量 pte
-    if (pte & PTE_V)//检查页表条目的有效位。如果有效位为真，表示该条目有效。
+{
+  for (int index = 0; index < 512; index++)
+  {
+    pte_t entry = pagetable[index]; // 获取页表项
+    if (entry & PTE_V) // 检查页表项是否有效
     {
-      uint64 pa = PTE2PA(pte);//将页表条目转换为物理地址，并赋值给变量 pa
-      for (int j = 0; j < level; j++)
-      {//根据当前层级 level ,用 for 循环打印缩进符号
-        if (j)
+      uint64 physicalAddr = PTE2PA(entry); // 获取物理地址
+      for (int indent = 0; indent < level; indent++)
+      {
+        if (indent)
           printf(" ");
         printf("..");
       }
-      //打印条目的索引 i、页表条目的值 pte 和物理地址 pa
-      printf("%d: pte %p pa %p\n", i, pte, pa);
-      if ((pte & (PTE_R | PTE_W | PTE_X)) == 0)
-      {//检查页表条目中的读、写和执行标志位是否都为零。如果都为零，表示该条目对应的下一级页表存在，并且没有权限限制。
-        _vmprint((pagetable_t)pa, level + 1);// 递归调用_vmprint函数，传递下一级页表的地址pa，并将层级level加1
+      // 打印页表项信息
+      printf("%d: pte %p pa %p\n", index, entry, physicalAddr);
+      if ((entry & (PTE_R | PTE_W | PTE_X)) == 0)
+      {
+        // 递归打印下一级页表
+        _vmprint((pagetable_t)physicalAddr, level + 1);
       }
     }
   }
 }
 
+// 打印页表入口函数
 void vmprint(pagetable_t pagetable) {
-  printf("page table %p\n", pagetable);//用&p，打印 pagetable 变量的指针值的十六进制表示形式
+  printf("page table %p\n", pagetable); // 打印页表地址
   _vmprint(pagetable, 1);
 }
 
-//参照kvminit
+// 映射内核页表
 void ukvmmap(pagetable_t kpagetable, uint64 va, uint64 pa, uint64 sz, int perm) 
-{//将一段虚拟地址范围 va 到 va+sz 映射到物理地址范围 pa 到 pa+sz
-  if(mappages(kpagetable, va, sz, pa, perm) != 0)//调用 mappages 函数来将虚拟地址范围映射到物理地址范围
-    panic("uvmmap");
+{
+  if(mappages(kpagetable, va, sz, pa, perm) != 0) // 映射页表条目
+    panic("ukvmmap");
 }
-pagetable_t ukvminit() //初始化内核页表
-{//使用 kalloc 函数在内核堆中分配一块内存，用于存储内核页表，并将分配的内存强制类型转换为 pagetable_t 类型的指针 kpagetable
-  pagetable_t kpagetable = (pagetable_t) kalloc(); 
-  memset(kpagetable, 0, PGSIZE);//使用 memset 函数将 kpagetable 内存块的内容全部初始化为零
-  ukvmmap(kpagetable, UART0, UART0, PGSIZE, PTE_R | PTE_W);//将UART0的虚拟地址范围映射到UART0的物理地址范围，并设置读写权限
+
+// 初始化内核页表
+pagetable_t ukvminit() 
+{
+  pagetable_t kpagetable = (pagetable_t) kalloc(); // 分配内核页表
+  memset(kpagetable, 0, PGSIZE); // 清空页表内存
+  // 映射内核需要的地址范围
+  ukvmmap(kpagetable, UART0, UART0, PGSIZE, PTE_R | PTE_W);
   ukvmmap(kpagetable, VIRTIO0, VIRTIO0, PGSIZE, PTE_R | PTE_W);
   ukvmmap(kpagetable, CLINT, CLINT, 0x10000, PTE_R | PTE_W);
   ukvmmap(kpagetable, PLIC, PLIC, 0x400000, PTE_R | PTE_W);
   ukvmmap(kpagetable, KERNBASE, KERNBASE, (uint64)etext-KERNBASE, PTE_R | PTE_X);
   ukvmmap(kpagetable, (uint64)etext, (uint64)etext, PHYSTOP-(uint64)etext, PTE_R | PTE_W);
   ukvmmap(kpagetable, TRAMPOLINE, (uint64)trampoline, PGSIZE, PTE_R | PTE_X);
-  return kpagetable;//将创建好的内核页表 kpagetable 返回
+  return kpagetable; // 返回内核页表
 }
 
-void//将用户空间的映射复制到内核空间的页表中
-u2kvmcopy(pagetable_t pagetable, pagetable_t kpagetable, uint64 oldsz, uint64 newsz)
-{//pagetable 是用户页表指针，kpagetable 是内核页表指针，oldsz 是旧的用户空间大小，newsz 是新的用户空间大小。
-  pte_t *pte_from, *pte_to;//定义两个指向页表项的指针，用于遍历用户页表和内核页表
-  uint64 a, pa;//用于保存虚拟地址和物理地址
-  uint flags;//用于保存页表项的标志
-  if (newsz < oldsz)//如果新的用户空间大小小于旧的用户空间大小，则直接返回
+// 将用户页表复制到内核页表
+void u2kvmcopy(pagetable_t pagetable, pagetable_t kpagetable, uint64 oldsz, uint64 newsz)
+{
+  pte_t *srcPte, *dstPte; // 定义页表项指针
+  uint64 virtualAddr, physicalAddr; // 定义虚拟地址和物理地址
+  uint flags; // 定义页表项标志
+  if (newsz < oldsz) // 如果新大小小于旧大小，直接返回
     return; 
-  oldsz = PGROUNDUP(oldsz);//将旧的用户空间大小向上对齐到页的边界
-  for (a = oldsz; a < newsz; a += PGSIZE)
-  {//调用 walk 函数，在用户页表中查找给定虚拟地址对应的页表项，并将结果保存在 pte_from 变量中
-    if ((pte_from = walk(pagetable, a, 0)) == 0)
+  oldsz = PGROUNDUP(oldsz); // 将旧大小向上取整到页边界
+  for (virtualAddr = oldsz; virtualAddr < newsz; virtualAddr += PGSIZE)
+  {
+    // 获取用户页表项
+    if ((srcPte = walk(pagetable, virtualAddr, 0)) == 0)
       panic("u2kvmcopy: pte should exist");
-  //调用 walk 函数，在内核页表中查找给定虚拟地址对应的页表项，并将结果保存在 pte_to 变量
-    if ((pte_to = walk(kpagetable, a, 1)) == 0)
+    // 获取内核页表项
+    if ((dstPte = walk(kpagetable, virtualAddr, 1)) == 0)
       panic("u2kvmcopy: walk fails");
-    pa = PTE2PA(*pte_from);//从用户页表项中提取物理地址，并将结果保存在 pa 变量
-    // 清除PTE_U的标记位
-    flags = (PTE_FLAGS(*pte_from) & (~PTE_U));//从用户页表项中提取标志，并通过按位与运算符来清除 PTE_U 标志位
-    *pte_to = PA2PTE(pa) | flags;//将经过处理后的物理地址和标志写入内核页表项
+    physicalAddr = PTE2PA(*srcPte); // 获取物理地址
+    flags = (PTE_FLAGS(*srcPte) & (~PTE_U)); // 获取标志并清除PTE_U
+    *dstPte = PA2PTE(physicalAddr) | flags; // 设置内核页表项
   }
 }

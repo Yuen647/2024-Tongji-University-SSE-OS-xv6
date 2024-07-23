@@ -128,10 +128,9 @@ found:
     return 0;
   }
 
-  // 下面是新添加的
   // An empty user kernel page table.
-  p->kpagetable = ukvminit();//创建和初始化了一个用户空间的页表
-  if (p->kpagetable == 0)//如果创建用户空间页表失败
+  p->kpagetable = ukvminit();
+  if (p->kpagetable == 0)
   {
     freeproc(p);
     release(&p->lock);
@@ -139,12 +138,12 @@ found:
   }
 
   // 初始化内核栈
-  char *pa = kalloc();//和原本的procinit函数一样，为进程分配一个物理页作为内核栈的存储空间
+  char *pa = kalloc();//为进程分配一个物理页
   if (pa == 0)
     panic("kalloc");
-  uint64 va = KSTACK((int)(p - proc));//计算进程在 proc 数组中的索引，为其分配一个虚拟地址
-  ukvmmap(p->kpagetable, va, (uint64)pa, PGSIZE, PTE_R | PTE_W);//把内核态页表映射到物理地址
-  p->kstack = va;//在进程切换到内核态时使用该虚拟地址作为用户空间的内核栈的起始地址
+  uint64 va = KSTACK((int)(p - proc));//分配一个虚拟地址
+  ukvmmap(p->kpagetable, va, (uint64)pa, PGSIZE, PTE_R | PTE_W);//内核态页表映射到物理地址
+  p->kstack = va;//用户空间的内核栈的起始地址
 
   // Set up new context to start executing at forkret,
   // which returns to user space.
@@ -155,69 +154,66 @@ found:
   return p;
 }
 
-void 
-free_kernel_pagetable(pagetable_t pagetable)//释放内核页表
+// 释放内核页表
+void free_kernel_pagetable(pagetable_t pagetable)
 {
-  for(int i = 0; i < 512; ++i)//在Xv6中，一个页表有512个页表项
+  for(int index = 0; index < 512; ++index) // 遍历页表的所有条目
   {
-    pte_t pte = pagetable[i];//获取页表中索引为 i 的页表项的值，并将其存储在变量 pte 中
-    if((pte & PTE_V) && (pte & (PTE_R|PTE_W|PTE_X)) == 0)//检查页表项是否有效且只包含页表目录项的标志
+    pte_t entry = pagetable[index]; // 获取页表条目
+    if((entry & PTE_V) && (entry & (PTE_R|PTE_W|PTE_X)) == 0) // 检查条目是否有效且是页表目录项
     {
-      pagetable[i] = 0;//如果页表项是页表目录项，则将其标记为无效
-      free_kernel_pagetable((pagetable_t)PTE2PA(pte));//递归调用 free_kernel_pagetable 函数，释放页表目录项对应的子页表
+      pagetable[index] = 0; // 将页表目录项标记为无效
+      free_kernel_pagetable((pagetable_t)PTE2PA(entry)); // 递归释放子页表
     } 
-    else if(pte & PTE_V)//如果页表项是普通的页表项（非页表目录项）
-      pagetable[i] = 0;//标记为无效
+    else if(entry & PTE_V) // 如果是普通页表项
+      pagetable[index] = 0; // 标记为无效
   }
-  kfree((void *)pagetable);//释放 pagetable 所指向的内存
-}
-void proc_free_kernel_pagetable(struct proc *p)//释放该进程的内核页表及其对应的内存
-{
-  //先释放内核栈
-  if (p->kstack)//检查进程的内核栈是否存在
-  {
-    pte_t *pte = walk(p->kpagetable, p->kstack, 0);//使用 walk 函数从进程的内核页表中获取与内核栈相关的页表项的指针
-    kfree((void *)PTE2PA(*pte));//释放与内核栈相关的物理内存
-    p->kstack = 0;//将进程的内核栈设置为 0，表示内核栈已释放
-  }
-  free_kernel_pagetable(p->kpagetable);//释放进程的内核页表及其子页表
+  kfree((void *)pagetable); // 释放页表所占的内存
 }
 
-// free a proc structure and the data hanging from it,
-// including user pages.
-// p->lock must be held.
-static void
-freeproc(struct proc *p)
+// 释放进程的内核页表及其对应的内存
+void proc_free_kernel_pagetable(struct proc *p)
 {
-  if (p->trapframe)
-    kfree((void *)p->trapframe);
-  p->trapframe = 0;
-  if (p->pagetable)
-    proc_freepagetable(p->pagetable, p->sz);
-  p->pagetable = 0;
-  p->sz = 0;
-  p->pid = 0;
-  p->parent = 0;
-  p->name[0] = 0;
-  p->chan = 0;
-  p->killed = 0;
-  p->xstate = 0;
-  p->state = UNUSED;
-  // 释放内核栈
-  if (p->kstack)
+  if (p->kstack) // 检查进程的内核栈是否存在
   {
-    pte_t *pte = walk(p->kpagetable, p->kstack, 0);
-    if (pte == 0)
+    pte_t *pte_ptr = walk(p->kpagetable, p->kstack, 0); // 获取与内核栈相关的页表项
+    kfree((void *)PTE2PA(*pte_ptr)); // 释放与内核栈相关的物理内存
+    p->kstack = 0; // 将内核栈设置为 0
+  }
+  free_kernel_pagetable(p->kpagetable); // 释放进程的内核页表及其子页表
+}
+
+// 释放进程结构体及其相关的数据，包括用户页
+// 必须持有 p->lock
+static void freeproc(struct proc *proc)
+{
+  if (proc->trapframe)
+    kfree((void *)proc->trapframe); // 释放trapframe
+  proc->trapframe = 0;
+  if (proc->pagetable)
+    proc_freepagetable(proc->pagetable, proc->sz); // 释放用户页表
+  proc->pagetable = 0;
+  proc->sz = 0;
+  proc->pid = 0;
+  proc->parent = 0;
+  proc->name[0] = 0;
+  proc->chan = 0;
+  proc->killed = 0;
+  proc->xstate = 0;
+  proc->state = UNUSED;
+  if (proc->kstack) // 释放内核栈
+  {
+    pte_t *pte_ptr = walk(proc->kpagetable, proc->kstack, 0); // 获取内核栈相关的页表项
+    if (pte_ptr == 0)
       panic("freeproc: walk");
-    kfree((void *)PTE2PA(*pte));
+    kfree((void *)PTE2PA(*pte_ptr)); // 释放内核栈的物理内存
   }
-  p->kstack = 0;
-  // 释放内核页表（取消映射关系）
-  if (p->kpagetable)
+  proc->kstack = 0;
+  if (proc->kpagetable) // 释放内核页表
   {
-    proc_free_kernel_pagetable(p);
+    proc_free_kernel_pagetable(proc);
   }
-  p->kpagetable = 0;
+  proc->kpagetable = 0;
 }
 
 // Create a user page table for a given process,
@@ -310,12 +306,10 @@ int growproc(int n)
   sz = p->sz;
   if (n > 0)
   {
-    // 不能覆盖PLIC地址空间
     if (PGROUNDUP(sz + n) >= PLIC)
-      return -1;//如果将进程的大小增加 n 之后，向上对齐到页的边界后的结果大于等于 PLIC（外部中断控制器）的地址，就返回 -1
+      return -1;
     if ((sz = uvmalloc(p->pagetable, sz, sz + n)) == 0)
-      return -1;//调用 uvmalloc 函数，根据参数 sz 和 sz + n 来分配新的用户虚拟内存空间。如果分配失败，返回 -1。
-    // 调用 u2kvmcopy 函数，将用户空间的映射复制到内核空间的页表中
+      return -1;
     u2kvmcopy(p->pagetable, p->kpagetable, sz - n, sz);
   }
   else if (n < 0)
@@ -558,10 +552,8 @@ void scheduler(void)
         c->proc = p;
         // 将 p->kpagetable 中的页表设置为当前 CPU 的页表
         w_satp(MAKE_SATP(p->kpagetable));
-        sfence_vma();//刷新虚拟内存映射
-        // 切换进程上下文
+        sfence_vma();
         swtch(&c->context, &p->context);
-        // 切换回全局内核页表
         kvminithart();
         // Process is done running for now.
         // It should have changed its p->state before coming back.
