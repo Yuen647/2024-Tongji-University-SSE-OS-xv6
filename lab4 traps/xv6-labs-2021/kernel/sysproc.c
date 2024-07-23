@@ -98,31 +98,40 @@ sys_uptime(void)
 }
 
 uint64
-sys_sigreturn(void)//恢复被中断的程序的执行，并清除一些相关的状态信息
+sys_sigreturn(void) // 恢复被中断的程序的执行，并清除一些相关的状态信息
 {
-  struct proc *p = myproc();//通过调用myproc()函数获取当前进程的指针
-  //将当前进程的since_interval成员变量设置为0。
-  p->since_interval = 0;//这个变量用于跟踪自上一次定时器中断以来经过的时间。
-  //将当前进程的trapframe_cp成员变量的值复制到trapframe成员变量指向的内存中。
-  *(p->trapframe) = p->trapframe_cp;//trapframe_cp用于保存中断处理程序的上下文，trapframe用于恢复被中断的程序的执行。
-  p->running_hand = 0;//确保在恢复被中断的程序的执行之前，没有其他中断处理程序正在运行
+  struct proc *p = myproc(); // 获取当前进程的指针
+  
+  p->since_interval = 0; // 重置since_interval，跟踪自上一次定时器中断以来的时间
+  
+  *(p->trapframe) = p->trapframe_cp; // 恢复被中断的程序的执行上下文
+  
+  p->running_hand = 0; // 确保没有其他中断处理程序正在运行
+  
   return 0;
 }
 
+
 uint64
-sys_sigalarm(void)//设置定时器并关联中断处理函数
+sys_sigalarm(void) // 设置定时器并关联中断处理函数
 {
-  int interval;//用于存储定时器的时间间隔
-  uint64 pointer;//用于存储中断处理函数的指针
-  if(argint(0, &interval) < 0)
+  int timeInterval; // 定时器的时间间隔
+  uint64 handlerAddr; // 中断处理函数的地址
+  
+  if(argint(0, &timeInterval) < 0)
     return -1;
-  if(interval == 0)//如果定时器的时间间隔为0，直接返回0。这表示停止定时器，不需要设置中断处理函数。
+  
+  if(timeInterval == 0) // 如果时间间隔为0，则停止定时器
     return 0;
-  if(argaddr(1, &pointer) < 0)
+  
+  if(argaddr(1, &handlerAddr) < 0)
     return -1;
-  myproc()->handler = (void *)pointer;//将当前进程的handler成员变量设置为pointer的值，即设置中断处理函数的指针。
-  myproc()->since_interval = 0;//将当前进程的since_interval成员变量设置为0。这个变量用于跟踪自上一次定时器中断以来经过的时间。
-  myproc()->running_hand = 0;//确保在设置定时器之前，没有其他中断处理程序正在运行
-  myproc()->interval = interval;//设置定时器的时间间隔。
+  
+  myproc()->handler = (void *)handlerAddr; // 设置中断处理函数
+  myproc()->since_interval = 0; // 初始化经过的时间
+  myproc()->running_hand = 0; // 确保没有其他中断处理程序正在运行
+  myproc()->interval = timeInterval; // 设置定时器的时间间隔
+  
   return 0;
 }
+

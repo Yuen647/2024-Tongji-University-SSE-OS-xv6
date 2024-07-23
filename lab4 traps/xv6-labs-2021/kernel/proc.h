@@ -107,7 +107,7 @@ struct proc {
   int interval;                // interval of alarm
   int since_interval;          // last call until now
   void (*handler)();           // function pointer
-  int running_hand;            // flag of running
+  int running_hand;            // flag of running765
   struct trapframe trapframe_cp;  //copy of trapframe_cp
 
 };

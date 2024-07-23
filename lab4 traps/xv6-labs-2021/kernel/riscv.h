@@ -11,7 +11,7 @@ static inline uint64
 r_fp()
 {
   uint64 x;
-  asm volatile("mv %0, s0" : "=r" (x) );//这是一个内联汇编表达式，用于将寄存器s0的值移动到变量x中
+  asm volatile("mv %0, s0" : "=r" (x) );
   return x;
 }
 

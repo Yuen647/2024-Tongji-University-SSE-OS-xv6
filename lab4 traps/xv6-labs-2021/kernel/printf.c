@@ -143,7 +143,7 @@ backtrace(void)
   while (PGROUNDUP(addr) - PGROUNDDOWN(addr) == PGSIZE)
   {
     uint64 ret_addr = *(uint64 *)(addr - 8);
-    printf("%p\n", ret_addr);//打印ret_addr的值
+    printf("%p\n", ret_addr);
     addr = *((uint64 *)(addr - 16));//获取下一个栈帧的帧指针
   }
 }
