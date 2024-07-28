@@ -34,8 +34,6 @@ barrier()
   bstate.nthread++;
   if(bstate.nthread < nthread){
     pthread_cond_wait(&bstate.barrier_cond, &bstate.barrier_mutex);
-    // 如果没有全部到达 barrier 的位置，就等待
-    // 在收到信号之前，cond 是阻塞的
   }else{
     bstate.nthread = 0;
     bstate.round++;

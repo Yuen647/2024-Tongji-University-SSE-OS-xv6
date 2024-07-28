@@ -30,8 +30,8 @@ struct Context{
 };
 
 struct thread {
-  char       stack[STACK_SIZE]; /* the thread's stack */
-  int        state;             /* FREE, RUNNING, RUNNABLE */
+  char       stack[STACK_SIZE]; 
+  int        state;             
   struct Context ctx;
 };
 struct thread all_thread[MAX_THREAD];

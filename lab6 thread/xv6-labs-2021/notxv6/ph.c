@@ -8,7 +8,7 @@
 #define NBUCKET 5
 #define NKEYS 100000
 
-struct entry { // 实际上是一个储存 key 和 val 的链表
+struct entry { 
   int key;
   int value;
   struct entry *next;
@@ -21,7 +21,7 @@ int nthread = 1;
 
 double
 now()
-{ // 获取当前时间
+{ 
  struct timeval tv;
  gettimeofday(&tv, 0);
  return tv.tv_sec + tv.tv_usec / 1000000.0;
@@ -43,17 +43,14 @@ void put(int key, int value)
   int i = key % NBUCKET;
   
   pthread_mutex_lock(&bkt_lock[i]);
-  // is the key already present?
   struct entry *e = 0;
   for (e = table[i]; e != 0; e = e->next) {
     if (e->key == key)
       break;
   }
   if(e){
-    // update the existing key.
     e->value = value;
   } else {
-    // the new is new.
     insert(key, value, &table[i], table[i]); // 在 table[i] 的最前面插入一个 key val 对
   }
   pthread_mutex_unlock(&bkt_lock[i]);
@@ -127,9 +124,6 @@ main(int argc, char *argv[])
     keys[i] = random();
   }
 
-  //
-  // first the puts
-  //
   t0 = now();
   for(int i = 0; i < nthread; i++) {
     assert(pthread_create(&tha[i], NULL, put_thread, (void *) (long) i) == 0);
@@ -142,9 +136,6 @@ main(int argc, char *argv[])
   printf("%d puts, %.3f seconds, %.0f puts/second\n",
          NKEYS, t1 - t0, NKEYS / (t1 - t0));
 
-  //
-  // now the gets
-  //
   t0 = now();
   for(int i = 0; i < nthread; i++) {
     assert(pthread_create(&tha[i], NULL, get_thread, (void *) (long) i) == 0);
