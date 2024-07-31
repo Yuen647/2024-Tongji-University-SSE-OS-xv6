@@ -84,14 +84,13 @@ enum procstate { UNUSED, USED, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };
 
 #define NVMA 16     // the number of VMA in a process - lab10
 
-// Virtual Memory Area, VMA - lab 10
 struct vm_area {
-    uint64 addr;    // mmap address
-    int len;        // mmap memory length
-    int prot;       // permission
-    int flags;      // the mmap flags
-    int offset;     // the file offset
-    struct file* f; // pointer to the mapped file
+    uint64 addr;   
+    int len;        
+    int prot;      
+    int flags;      
+    int offset;   
+    struct file* f;
 };
 
 // Per-process state
@@ -117,5 +116,5 @@ struct proc {
   struct file *ofile[NOFILE];  // Open files
   struct inode *cwd;           // Current directory
   char name[16];               // Process name (debugging)
-  struct vm_area vma[NVMA];    // VMA array - lab 10
+  struct vm_area vma[NVMA];    
 };

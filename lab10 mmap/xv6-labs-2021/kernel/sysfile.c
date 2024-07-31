@@ -489,7 +489,6 @@ sys_pipe(void)
   return 0;
 }
 
-// lab 10 added
 uint64 
 sys_mmap(void) {
   uint64 addr;
@@ -507,16 +506,13 @@ sys_mmap(void) {
   if (flags != MAP_SHARED && flags != MAP_PRIVATE) {
     return -1;
   }
-  // the file must be written when flag is MAP_SHARED
   if (flags == MAP_SHARED && f->writable == 0 && (prot & PROT_WRITE)) {
     return -1;
   }
-  // offset must be a multiple of the page size
   if (len < 0 || offset < 0 || offset % PGSIZE) {
     return -1;
   }
 
-  // allocate a VMA for the mapped memory
   for (i = 0; i < NVMA; ++i) {
     if (!p->vma[i].addr) {
       vma = &p->vma[i];
@@ -527,13 +523,10 @@ sys_mmap(void) {
     return -1;
   }
 
-  // assume that addr will always be 0, the kernel 
-  //choose the page-aligned address at which to create
-  //the mapping
+
   addr = MMAPMINADDR;
   for (i = 0; i < NVMA; ++i) {
     if (p->vma[i].addr) {
-      // get the max address of the mapped memory  
       addr = max(addr, p->vma[i].addr + p->vma[i].len);
     }
   }
@@ -547,12 +540,12 @@ sys_mmap(void) {
   vma->flags = flags;
   vma->offset = offset;
   vma->f = f;
-  filedup(f);     // increase the file's reference count
+  filedup(f);    
 
   return addr;
 }
 
-// lab 10 added
+
 uint64 
 sys_munmap(void) {
   uint64 addr, va;
@@ -569,7 +562,6 @@ sys_munmap(void) {
     return -1;
   }
 
-  // find the VMA
   for (i = 0; i < NVMA; ++i) {
     if (p->vma[i].addr && addr >= p->vma[i].addr
         && addr + len <= p->vma[i].addr + p->vma[i].len) {
@@ -586,13 +578,11 @@ sys_munmap(void) {
   }
 
   if ((vma->flags & MAP_SHARED)) {
-    // the max size once can write to the disk
     maxsz = ((MAXOPBLOCKS - 1 - 1 - 2) / 2) * BSIZE;
     for (va = addr; va < addr + len; va += PGSIZE) {
       if (uvmgetdirty(p->pagetable, va) == 0) {
         continue;
       }
-      // only write the dirty page back to the mapped file
       n = min(PGSIZE, addr + len - va);
       for (i = 0; i < n; i += n1) {
         n1 = min(maxsz, n - i);
@@ -609,7 +599,6 @@ sys_munmap(void) {
     }
   }
   uvmunmap(p->pagetable, addr, (len - 1) / PGSIZE + 1, 1);
-  // update the vma
   if (addr == vma->addr && len == vma->len) {
     vma->addr = 0;
     vma->len = 0;
