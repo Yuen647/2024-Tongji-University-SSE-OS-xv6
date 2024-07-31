@@ -437,7 +437,6 @@ copyinstr(pagetable_t pagetable, char *dst, uint64 srcva, uint64 max)
   }
 }
 
-// get the dirty flag of the va's PTE - lab10
 int uvmgetdirty(pagetable_t pagetable, uint64 va) {
   pte_t *pte = walk(pagetable, va, 0);
   if(pte == 0) {
@@ -446,7 +445,6 @@ int uvmgetdirty(pagetable_t pagetable, uint64 va) {
   return (*pte & PTE_D);
 }
 
-// set the dirty flag and write flag of the va's PTE - lab10
 int uvmsetdirtywrite(pagetable_t pagetable, uint64 va) {
   pte_t *pte = walk(pagetable, va, 0);
   if(pte == 0) {
